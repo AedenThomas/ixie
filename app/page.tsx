@@ -109,7 +109,7 @@ export default function Home() {
           opacity: currentScreen === "genre" ? 1 : 0,
         }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
-        className="w-full flex flex-col items-center justify-center"
+        className="absolute inset-0 flex flex-col items-center justify-center z-10"
       >
         {/* Header */}
         <div className="text-center mb-16">
@@ -172,7 +172,7 @@ export default function Home() {
           opacity: currentScreen === "theme" ? 1 : 0,
         }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
-        className={`absolute inset-0 flex flex-col items-center justify-center ${
+        className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${
           currentScreen === "theme"
             ? "pointer-events-auto"
             : "pointer-events-none"
@@ -220,7 +220,11 @@ export default function Home() {
                           opacity: selectedTheme === theme.name ? 1 : 0,
                         }}
                         transition={{ duration: 0.2 }}
-                        className="font-medium whitespace-nowrap text-white min-w-0 overflow-hidden text-ellipsis"
+                        className={`font-medium whitespace-nowrap min-w-0 overflow-hidden text-ellipsis ${
+                          selectedGenre === "Romance"
+                            ? "text-black"
+                            : "text-white"
+                        }`}
                       >
                         {theme.name}
                       </motion.h2>
@@ -260,7 +264,7 @@ export default function Home() {
           opacity: currentScreen === "story" ? 1 : 0,
         }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
-        className={`absolute inset-0 flex flex-col items-center justify-center ${
+        className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${
           currentScreen === "story"
             ? "pointer-events-auto"
             : "pointer-events-none"
@@ -394,19 +398,17 @@ export default function Home() {
 
       {/* Radial Gradient */}
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={{ opacity: 0.3 }}
         animate={{
-          opacity: currentScreen === "theme" ? [0.3, 0.9, 0, 0.3] : 0.3,
-          scale: currentScreen === "theme" ? [1, 3, 3, 1] : 1,
-          backgroundColor:
-            currentScreen === "theme"
-              ? ["transparent", "transparent", "black", "transparent"]
-              : "transparent",
+          opacity: currentScreen === "genre" ? [0.2, 0.4, 0.2] : [1, 0],
+          scale: currentScreen === "genre" ? [1, 1.1, 1] : [1, 10],
+          backgroundColor: "transparent",
         }}
         transition={{
-          duration: 2,
-          ease: [0.4, 0, 0.2, 1],
-          times: [0, 0.2, 0.4, 1],
+          duration: currentScreen === "genre" ? 3 : 2,
+          ease: "easeInOut",
+          repeat: currentScreen === "genre" ? Infinity : 0,
+          times: currentScreen === "genre" ? [0, 0.5, 1] : [0, 1],
         }}
         className="fixed inset-0 w-screen h-screen z-0 pointer-events-none"
         style={{
@@ -414,6 +416,28 @@ export default function Home() {
           transformOrigin: "center bottom",
         }}
       />
+      {/* Second gradient for continuous subtle pulse */}
+      {currentScreen !== "genre" && (
+        <motion.div
+          initial={{ opacity: 0, scale: 2.9 }}
+          animate={{
+            opacity: [0.2, 0.3, 0.2],
+            scale: [0.6, 0.63, 0.6],
+          }}
+          transition={{
+            duration: 3,
+            ease: "easeInOut",
+            repeat: Infinity,
+            times: [0, 0.5, 1],
+            delay: 2,
+          }}
+          className="fixed inset-0 w-screen h-screen z-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at center bottom, ${currentGradientColor} 0%, transparent 60%)`,
+            transformOrigin: "center bottom",
+          }}
+        />
+      )}
     </div>
   );
 }
