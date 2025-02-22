@@ -310,21 +310,13 @@ export default function Home() {
         </div>
       </motion.div>
 
-      {/* Story View */}
-      <motion.div
-        initial={{ y: 1000, opacity: 0 }}
-        animate={{
-          y: currentScreen === "story" ? 0 : 1000,
-          opacity: currentScreen === "story" ? 1 : 0,
-        }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
-        className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${
-          currentScreen === "story"
-            ? "pointer-events-auto"
-            : "pointer-events-none"
-        }`}
-      >
-        {isLoading ? (
+      {/* Loading Overlay */}
+      {isLoading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center"
+        >
           <div className="flex flex-col items-center justify-center space-y-8 p-8 max-w-lg mx-auto text-center">
             <div className="relative w-32 h-32">
               <div className="absolute inset-0 rounded-full border-4 border-white border-opacity-20"></div>
@@ -390,7 +382,24 @@ export default function Home() {
               </div>
             </div>
           </div>
-        ) : story ? (
+        </motion.div>
+      )}
+
+      {/* Story View */}
+      <motion.div
+        initial={{ y: 1000, opacity: 0 }}
+        animate={{
+          y: currentScreen === "story" ? 0 : 1000,
+          opacity: currentScreen === "story" ? 1 : 0,
+        }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+        className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${
+          currentScreen === "story"
+            ? "pointer-events-auto"
+            : "pointer-events-none"
+        }`}
+      >
+        {story ? (
           <div className="w-full max-w-6xl mx-auto px-4">
             <h1 className="text-4xl font-bold text-white mb-8 text-center">
               {story.title}
@@ -431,6 +440,14 @@ export default function Home() {
                     controls
                     autoPlay
                     className="w-full h-full object-cover"
+                    onLoadedMetadata={(e) => {
+                      const video = e.target as HTMLVideoElement;
+                      const audioDuration =
+                        story.frames[currentFrame].audio?.duration || 5;
+                      // Calculate playback rate to match audio duration (5 second video)
+                      const playbackRate = 5 / audioDuration;
+                      video.playbackRate = playbackRate;
+                    }}
                     onPlay={() => {
                       if (
                         currentFrame < 2 &&
