@@ -8,6 +8,7 @@ interface Theme {
 interface StoryFrame {
   text: string;
   imageUrl: string;
+  soundEffect?: string;
 }
 
 interface Story {
@@ -97,6 +98,7 @@ The story should follow these guidelines:
 4. The tone and style should match the genre
 5. The theme should be woven throughout the narrative
 6. Each frame's text should be detailed enough to generate an image from
+7. Include a background sound effect description for each frame that enhances the mood
 
 You must respond with a JSON object in this exact format:
 {
@@ -104,7 +106,8 @@ You must respond with a JSON object in this exact format:
   "frames": [
     {
       "text": "Descriptive text for frame 1",
-      "imageUrl": ""
+      "imageUrl": "",
+      "soundEffect": "A clear description of the background sound effect"
     },
     // ... exactly 10 frames total
   ]
@@ -117,7 +120,7 @@ You must respond with a JSON object in this exact format:
         {
           role: "system",
           content:
-            "You are a creative writing assistant that generates structured stories in JSON format. Always respond with a properly formatted JSON object containing a title and exactly 10 frames.",
+            "You are a creative writing assistant that generates structured stories in JSON format. Always respond with a properly formatted JSON object containing a title and exactly 10 frames, each with descriptive text and a matching sound effect description.",
         },
         {
           role: "user",
@@ -149,6 +152,7 @@ You must respond with a JSON object in this exact format:
       frames: parsedContent.frames.map((frame: any) => ({
         text: String(frame.text || ""),
         imageUrl: "",
+        soundEffect: String(frame.soundEffect || ""),
       })),
     };
 
@@ -163,6 +167,7 @@ You must respond with a JSON object in this exact format:
         .map((_, i) => ({
           text: `Frame ${i + 1} of the story...`,
           imageUrl: "",
+          soundEffect: "",
         })),
     };
   }

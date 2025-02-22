@@ -292,9 +292,13 @@ export default function Home() {
                       currentFrame < 2 &&
                       story.frames[currentFrame].audio?.base64
                     ) {
+                      // Create and play the mixed audio
                       const audio = base64ToAudio(
                         story.frames[currentFrame].audio!.base64
                       );
+
+                      // Set volume to full since mixing is already handled
+                      audio.volume = 1.0;
                       audio.play();
 
                       // Set up automatic transition to next frame

@@ -1,5 +1,8 @@
 import { fal } from "@fal-ai/client";
-import { generateSpeechWithTimestamps } from "./elevenlabs";
+import {
+  generateSpeechWithTimestamps,
+  generateSoundEffect,
+} from "./elevenlabs";
 import { generateStory } from "./mistral";
 
 // Configure fal-ai client with the correct credentials format
@@ -12,9 +15,14 @@ if (typeof window !== "undefined") {
 interface StoryFrame {
   text: string;
   imageUrl: string;
+  soundEffect?: string;
   audio?: {
     base64: string;
     duration: number;
+    backgroundSound?: {
+      base64: string;
+      duration: number;
+    };
   };
 }
 
@@ -251,6 +259,120 @@ const SAMPLE_STORIES: Record<string, Story> = {
   },
 };
 
+// Add WebkitAudioContext type declaration
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext;
+  }
+}
+
+async function mixAudioTracks(
+  voiceBase64: string,
+  backgroundBase64: string
+): Promise<string> {
+  // Create audio context
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Function to decode base64 audio
+  const decodeBase64Audio = async (base64: string) => {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return await audioContext.decodeAudioData(bytes.buffer);
+  };
+
+  // Decode both audio tracks
+  const [voiceBuffer, backgroundBuffer] = await Promise.all([
+    decodeBase64Audio(voiceBase64),
+    decodeBase64Audio(backgroundBase64),
+  ]);
+
+  // Create mono output buffer
+  const outputBuffer = audioContext.createBuffer(
+    1, // Use mono output
+    Math.max(voiceBuffer.length, backgroundBuffer.length),
+    audioContext.sampleRate
+  );
+
+  // Get the channel data
+  const outputData = outputBuffer.getChannelData(0);
+  const voiceData = voiceBuffer.getChannelData(0);
+  const backgroundData = backgroundBuffer.getChannelData(0);
+
+  // Mix the tracks
+  for (let i = 0; i < outputData.length; i++) {
+    // Both voice and background at 100% volume
+    outputData[i] = voiceData[i] + (backgroundData[i] || 0);
+  }
+
+  // Convert back to base64
+  const offlineContext = new OfflineAudioContext(
+    1, // Use mono output
+    outputBuffer.length,
+    outputBuffer.sampleRate
+  );
+  const source = offlineContext.createBufferSource();
+  source.buffer = outputBuffer;
+  source.connect(offlineContext.destination);
+  source.start();
+
+  const renderedBuffer = await offlineContext.startRendering();
+  const wavBlob = await new Promise<Blob>((resolve) => {
+    const length = renderedBuffer.length * 2; // 2 bytes per sample for 16-bit audio
+    const view = new DataView(new ArrayBuffer(44 + length));
+
+    // Write WAV header
+    writeString(view, 0, "RIFF");
+    view.setUint32(4, 36 + length, true);
+    writeString(view, 8, "WAVE");
+    writeString(view, 12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // Mono
+    view.setUint16(22, 1, true); // Number of channels
+    view.setUint32(24, renderedBuffer.sampleRate, true);
+    view.setUint32(28, renderedBuffer.sampleRate * 2, true); // Byte rate for mono
+    view.setUint16(32, 2, true); // Block align
+    view.setUint16(34, 16, true);
+    writeString(view, 36, "data");
+    view.setUint32(40, length, true);
+
+    // Write audio data
+    const floatTo16BitPCM = (
+      output: DataView,
+      offset: number,
+      input: Float32Array
+    ) => {
+      for (let i = 0; i < input.length; i++, offset += 2) {
+        const s = Math.max(-1, Math.min(1, input[i]));
+        output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      }
+    };
+
+    floatTo16BitPCM(view, 44, renderedBuffer.getChannelData(0));
+
+    resolve(new Blob([view], { type: "audio/wav" }));
+  });
+
+  // Convert Blob to base64
+  const reader = new FileReader();
+  const base64Promise = new Promise<string>((resolve) => {
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      resolve(base64.split(",")[1]);
+    };
+  });
+  reader.readAsDataURL(wavBlob);
+  return base64Promise;
+}
+
+function writeString(view: DataView, offset: number, string: string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
+
 export async function generateStoryImages(
   genre: string,
   theme: string
@@ -265,12 +387,23 @@ export async function generateStoryImages(
       .slice(2)
       .map((frame) => ({ ...frame, imageUrl: "" }));
 
-    // Generate images and audio for each frame
+    // Generate images and audio for first two frames
     const updatedFrames = await Promise.all(
       firstTwoFrames.map(async (frame) => {
         try {
-          console.log("Generating image for frame:", frame.text);
-          const [imageResult, audioResult] = await Promise.all([
+          console.log("Generating content for frame:", frame.text);
+
+          // Start with generating the voice narration to get its duration
+          const voiceResult = await generateSpeechWithTimestamps(frame.text);
+
+          const narrationDuration =
+            voiceResult.normalized_alignment.character_end_times_seconds[
+              voiceResult.normalized_alignment.character_end_times_seconds
+                .length - 1
+            ];
+
+          // Generate image and sound effect concurrently
+          const [imageResult, soundEffectResult] = await Promise.all([
             fal.subscribe("fal-ai/flux/schnell", {
               input: {
                 prompt: frame.text,
@@ -279,25 +412,39 @@ export async function generateStoryImages(
                 enable_safety_checker: true,
               },
             }),
-            generateSpeechWithTimestamps(frame.text),
+            frame.soundEffect
+              ? generateSoundEffect(
+                  frame.soundEffect,
+                  narrationDuration, // Match the duration of the narration
+                  0.3
+                )
+              : null,
           ]);
 
-          const lastTimestamp =
-            audioResult.normalized_alignment.character_end_times_seconds[
-              audioResult.normalized_alignment.character_end_times_seconds
-                .length - 1
-            ];
+          let mixedAudio;
+          if (soundEffectResult) {
+            mixedAudio = await mixAudioTracks(
+              voiceResult.audio_base64,
+              soundEffectResult
+            );
+          }
 
           return {
             ...frame,
             imageUrl: imageResult.data.images[0].url,
             audio: {
-              base64: audioResult.audio_base64,
-              duration: lastTimestamp,
+              base64: mixedAudio || voiceResult.audio_base64,
+              duration: narrationDuration,
+              backgroundSound: soundEffectResult
+                ? {
+                    base64: soundEffectResult,
+                    duration: narrationDuration,
+                  }
+                : undefined,
             },
           };
         } catch (error) {
-          console.error("Error generating image or audio:", error);
+          console.error("Error generating content for frame:", error);
           return frame;
         }
       })
