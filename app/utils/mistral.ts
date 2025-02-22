@@ -13,7 +13,7 @@ export async function generateThemes(genre: string): Promise<Theme[]> {
   const prompt = `Generate 5 creative and unique story themes for the "${genre}" genre. Each theme should be accompanied by a single relevant emoji.
 The themes should be engaging and specific to the genre.
 You must respond with a JSON array containing exactly 5 objects, each with "name" and "emoji" properties.
-Each emoji must be a single Unicode emoji character.`;
+IMPORTANT: Each emoji must be exactly one Unicode emoji character - no sequences, no modifiers, just a single emoji symbol.`;
 
   try {
     const chatResponse = await client.chat.complete({
@@ -41,10 +41,15 @@ Each emoji must be a single Unicode emoji character.`;
 
     // Check if the parsed content is an array
     const themes: Theme[] = Array.isArray(parsedContent)
-      ? parsedContent.map((theme: any) => ({
-          name: String(theme.name || ""),
-          emoji: String(theme.emoji || "✨"),
-        }))
+      ? parsedContent.map((theme: any) => {
+          // Ensure we only take the first emoji character if multiple are provided
+          const emoji =
+            String(theme.emoji || "✨").match(/\p{Emoji}/u)?.[0] || "✨";
+          return {
+            name: String(theme.name || ""),
+            emoji: emoji,
+          };
+        })
       : [];
 
     if (themes.length === 0) {

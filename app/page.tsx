@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { generateThemes } from "./utils/mistral";
 import { generateStoryImages } from "./utils/story";
 import { base64ToAudio } from "./utils/elevenlabs";
+import { CenteredCarousel } from "./components/CenteredCarousel";
 
 export default function Home() {
   const [selectedGenre, setSelectedGenre] = useState<string>("Mystery");
@@ -121,49 +122,21 @@ export default function Home() {
         </div>
 
         {/* Genre Row */}
-        <div className="flex gap-4 justify-center items-center relative z-10">
-          {genres.map((genre) => {
-            const isSelected = selectedGenre === genre.name;
-
-            return (
-              <motion.button
-                key={genre.name}
-                onClick={() => setSelectedGenre(genre.name)}
-                data-genre={genre.name}
-                className={`
-                  ${genre.color}
-                  rounded-full
-                  h-14
-                  flex items-center
-                  px-4
-                  cursor-pointer
-                  relative
-                  ${
-                    isSelected
-                      ? "w-[300px] justify-start"
-                      : "w-14 justify-center"
-                  }
-                `}
-                layout
-                animate={{
-                  scale: isSelected ? 1 : 0.95,
-                }}
-                whileHover={{
-                  scale: isSelected ? 1 : 1.05,
-                }}
-                whileTap={{ scale: 0.9 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 20,
-                }}
-              >
+        <CenteredCarousel
+          items={genres.map((genre) => ({
+            id: genre.name,
+            width: selectedGenre === genre.name ? 300 : 56,
+            isSelected: selectedGenre === genre.name,
+            onClick: () => setSelectedGenre(genre.name),
+            className: genre.color,
+            content: (
+              <>
                 <motion.div
                   className={`
                     w-6 h-6 
                     shrink-0 
                     flex items-center justify-center
-                    ${isSelected ? "mr-3" : ""}
+                    ${selectedGenre === genre.name ? "mr-3" : ""}
                   `}
                   layout
                 >
@@ -177,7 +150,7 @@ export default function Home() {
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: isSelected ? 1 : 0 }}
+                  animate={{ opacity: selectedGenre === genre.name ? 1 : 0 }}
                   transition={{ duration: 0.2 }}
                   className={`font-medium whitespace-nowrap ${
                     genre.textColor || "text-white"
@@ -185,10 +158,11 @@ export default function Home() {
                 >
                   {genre.name}
                 </motion.h2>
-              </motion.button>
-            );
-          })}
-        </div>
+              </>
+            ),
+          }))}
+          containerClassName="relative z-10"
+        />
       </motion.div>
 
       <motion.div
@@ -217,76 +191,63 @@ export default function Home() {
           {isLoading ? (
             <div className="text-white text-lg">Generating themes...</div>
           ) : (
-            <>
-              {generatedThemes.map((theme) => (
-                <motion.button
-                  key={theme.name}
-                  onClick={() => setSelectedTheme(theme.name)}
-                  className={`
-                    ${genres.find((g) => g.name === selectedGenre)?.color}
-                    rounded-full
-                    h-14
-                    flex items-center
-                    px-4
-                    cursor-pointer
-                    relative
-                    ${
-                      selectedTheme === theme.name
-                        ? "w-[300px] justify-start"
-                        : "w-14 justify-center"
-                    }
-                  `}
-                  layout
-                  animate={{
-                    scale: selectedTheme === theme.name ? 1 : 0.95,
-                  }}
-                  whileHover={{
-                    scale: selectedTheme === theme.name ? 1 : 1.05,
-                  }}
-                  whileTap={{ scale: 0.9 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 20,
-                  }}
-                >
-                  <motion.div
-                    className={`
-                      w-6 h-6 
-                      shrink-0 
-                      flex items-center justify-center
-                      ${selectedTheme === theme.name ? "mr-3" : ""}
-                    `}
-                    layout
-                  >
-                    <span className="text-2xl">{theme.emoji}</span>
-                  </motion.div>
-                  <motion.h2
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: selectedTheme === theme.name ? 1 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="font-medium whitespace-nowrap text-white"
-                  >
-                    {theme.name}
-                  </motion.h2>
-                </motion.button>
-              ))}
-
-              <motion.button
-                onClick={() => {
-                  const randomTheme =
-                    generatedThemes[
-                      Math.floor(Math.random() * generatedThemes.length)
-                    ];
-                  setSelectedTheme(randomTheme?.name || "");
-                }}
-                className="bg-white bg-opacity-10 rounded-full h-14 w-14 flex items-center justify-center cursor-pointer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <span className="text-2xl">🎲</span>
-              </motion.button>
-            </>
+            <CenteredCarousel
+              items={[
+                ...generatedThemes.map((theme) => ({
+                  id: theme.name,
+                  width: selectedTheme === theme.name ? 400 : 56,
+                  isSelected: selectedTheme === theme.name,
+                  onClick: () => setSelectedTheme(theme.name),
+                  className: `${
+                    genres.find((g) => g.name === selectedGenre)?.color
+                  } ${selectedTheme === theme.name ? "px-6" : "px-0"}`,
+                  content: (
+                    <>
+                      <motion.div
+                        className={`
+                          w-6 h-6 
+                          shrink-0 
+                          flex items-center justify-center
+                          ${selectedTheme === theme.name ? "mr-3" : ""}
+                        `}
+                        layout
+                      >
+                        <span className="text-2xl">{theme.emoji}</span>
+                      </motion.div>
+                      <motion.h2
+                        initial={{ opacity: 0 }}
+                        animate={{
+                          opacity: selectedTheme === theme.name ? 1 : 0,
+                        }}
+                        transition={{ duration: 0.2 }}
+                        className="font-medium whitespace-nowrap text-white min-w-0 overflow-hidden text-ellipsis"
+                      >
+                        {theme.name}
+                      </motion.h2>
+                    </>
+                  ),
+                })),
+                {
+                  id: "random",
+                  width: 56,
+                  isSelected: false,
+                  onClick: () => {
+                    const randomTheme =
+                      generatedThemes[
+                        Math.floor(Math.random() * generatedThemes.length)
+                      ];
+                    setSelectedTheme(randomTheme?.name || "");
+                  },
+                  className: "bg-white bg-opacity-10",
+                  content: (
+                    <span className="text-2xl flex items-center justify-center w-full h-full">
+                      🎲
+                    </span>
+                  ),
+                },
+              ]}
+              containerClassName="relative z-10"
+            />
           )}
         </div>
       </motion.div>
