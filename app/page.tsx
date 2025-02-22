@@ -1,101 +1,453 @@
+"use client";
+
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { generateThemes } from "./utils/mistral";
+import { generateStoryImages } from "./utils/story";
+import { base64ToAudio } from "./utils/elevenlabs";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [selectedGenre, setSelectedGenre] = useState<string>("Mystery");
+  const [currentScreen, setCurrentScreen] = useState<
+    "genre" | "theme" | "story"
+  >("genre");
+  const [selectedTheme, setSelectedTheme] = useState<string>("");
+  const [generatedThemes, setGeneratedThemes] = useState<
+    Array<{ name: string; emoji: string }>
+  >([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [story, setStory] = useState<{
+    title: string;
+    frames: Array<{
+      text: string;
+      imageUrl: string;
+      audio?: { base64: string; duration: number };
+    }>;
+  } | null>(null);
+  const [currentFrame, setCurrentFrame] = useState(0);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const genres = [
+    {
+      name: "Fantasy",
+      color: "bg-[#399A1D]",
+      gradientColor: "#399A1D",
+      icon: "/cloud.svg",
+    },
+    {
+      name: "Horror",
+      color: "bg-[#F54B4B]",
+      gradientColor: "#F54B4B",
+      icon: "/wolf.svg",
+    },
+    {
+      name: "Mystery",
+      color: "bg-[#FD950D]",
+      gradientColor: "#FD950D",
+      icon: "/shell.svg",
+    },
+    {
+      name: "Adventure",
+      color: "bg-[#2660DA]",
+      gradientColor: "#2660DA",
+      icon: "/feather.svg",
+    },
+    {
+      name: "Romance",
+      color: "bg-[#FFF]",
+      gradientColor: "#FFFFFF",
+      textColor: "text-black",
+      icon: "/flower.svg",
+    },
+  ];
+
+  useEffect(() => {
+    if (currentScreen === "theme") {
+      setIsLoading(true);
+      generateThemes(selectedGenre)
+        .then((themes) => {
+          setGeneratedThemes(themes);
+          setIsLoading(false);
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          setIsLoading(false);
+        });
+    }
+  }, [currentScreen, selectedGenre]);
+
+  // Add keyboard navigation
+  useEffect(() => {
+    if (currentScreen === "story") {
+      const handleKeyPress = (e: KeyboardEvent) => {
+        if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          setCurrentFrame((prev) => Math.max(0, prev - 1));
+        } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          setCurrentFrame((prev) =>
+            Math.min((story?.frames.length || 1) - 1, prev + 1)
+          );
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyPress);
+      return () => window.removeEventListener("keydown", handleKeyPress);
+    }
+  }, [currentScreen, story?.frames.length]);
+
+  // Get the current genre's gradient color
+  const currentGradientColor = genres.find(
+    (genre) => genre.name === selectedGenre
+  )?.gradientColor;
+
+  return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 relative overflow-hidden">
+      <motion.div
+        initial={false}
+        animate={{
+          y: currentScreen === "genre" ? 0 : -1000,
+          opacity: currentScreen === "genre" ? 1 : 0,
+        }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+        className="w-full flex flex-col items-center justify-center"
+      >
+        {/* Header */}
+        <div className="text-center mb-16">
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Welcome to Ixie
+          </h1>
+          <p className="text-gray-300 text-lg">
+            Select a genre to begin your story journey
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Genre Row */}
+        <div className="flex gap-4 justify-center items-center relative z-10">
+          {genres.map((genre) => {
+            const isSelected = selectedGenre === genre.name;
+
+            return (
+              <motion.button
+                key={genre.name}
+                onClick={() => setSelectedGenre(genre.name)}
+                data-genre={genre.name}
+                className={`
+                  ${genre.color}
+                  rounded-full
+                  h-14
+                  flex items-center
+                  px-4
+                  cursor-pointer
+                  relative
+                  ${
+                    isSelected
+                      ? "w-[300px] justify-start"
+                      : "w-14 justify-center"
+                  }
+                `}
+                layout
+                animate={{
+                  scale: isSelected ? 1 : 0.95,
+                }}
+                whileHover={{
+                  scale: isSelected ? 1 : 1.05,
+                }}
+                whileTap={{ scale: 0.9 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 20,
+                }}
+              >
+                <motion.div
+                  className={`
+                    w-6 h-6 
+                    shrink-0 
+                    flex items-center justify-center
+                    ${isSelected ? "mr-3" : ""}
+                  `}
+                  layout
+                >
+                  <Image
+                    src={genre.icon}
+                    alt={`${genre.name} icon`}
+                    width={24}
+                    height={24}
+                    className="w-full h-full object-contain"
+                  />
+                </motion.div>
+                <motion.h2
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: isSelected ? 1 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={`font-medium whitespace-nowrap ${
+                    genre.textColor || "text-white"
+                  }`}
+                >
+                  {genre.name}
+                </motion.h2>
+              </motion.button>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ y: 1000, opacity: 0 }}
+        animate={{
+          y: currentScreen === "theme" ? 0 : 1000,
+          opacity: currentScreen === "theme" ? 1 : 0,
+        }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+        className={`absolute inset-0 flex flex-col items-center justify-center ${
+          currentScreen === "theme"
+            ? "pointer-events-auto"
+            : "pointer-events-none"
+        }`}
+      >
+        <div className="text-center mb-16">
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Let's Narrow It Down
+          </h1>
+          <p className="text-gray-300 text-lg">
+            Pick a theme or let us surprise you!
+          </p>
+        </div>
+
+        <div className="flex flex-row gap-4 justify-center items-center relative z-10">
+          {isLoading ? (
+            <div className="text-white text-lg">Generating themes...</div>
+          ) : (
+            <>
+              {generatedThemes.map((theme) => (
+                <motion.button
+                  key={theme.name}
+                  onClick={() => setSelectedTheme(theme.name)}
+                  className={`
+                    ${genres.find((g) => g.name === selectedGenre)?.color}
+                    rounded-full
+                    h-14
+                    flex items-center
+                    px-4
+                    cursor-pointer
+                    relative
+                    ${
+                      selectedTheme === theme.name
+                        ? "w-[300px] justify-start"
+                        : "w-14 justify-center"
+                    }
+                  `}
+                  layout
+                  animate={{
+                    scale: selectedTheme === theme.name ? 1 : 0.95,
+                  }}
+                  whileHover={{
+                    scale: selectedTheme === theme.name ? 1 : 1.05,
+                  }}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 20,
+                  }}
+                >
+                  <motion.div
+                    className={`
+                      w-6 h-6 
+                      shrink-0 
+                      flex items-center justify-center
+                      ${selectedTheme === theme.name ? "mr-3" : ""}
+                    `}
+                    layout
+                  >
+                    <span className="text-2xl">{theme.emoji}</span>
+                  </motion.div>
+                  <motion.h2
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: selectedTheme === theme.name ? 1 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="font-medium whitespace-nowrap text-white"
+                  >
+                    {theme.name}
+                  </motion.h2>
+                </motion.button>
+              ))}
+
+              <motion.button
+                onClick={() => {
+                  const randomTheme =
+                    generatedThemes[
+                      Math.floor(Math.random() * generatedThemes.length)
+                    ];
+                  setSelectedTheme(randomTheme?.name || "");
+                }}
+                className="bg-white bg-opacity-10 rounded-full h-14 w-14 flex items-center justify-center cursor-pointer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <span className="text-2xl">🎲</span>
+              </motion.button>
+            </>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Story View */}
+      <motion.div
+        initial={{ y: 1000, opacity: 0 }}
+        animate={{
+          y: currentScreen === "story" ? 0 : 1000,
+          opacity: currentScreen === "story" ? 1 : 0,
+        }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+        className={`absolute inset-0 flex flex-col items-center justify-center ${
+          currentScreen === "story"
+            ? "pointer-events-auto"
+            : "pointer-events-none"
+        }`}
+      >
+        {isLoading ? (
+          <div className="text-white text-lg">Generating your story...</div>
+        ) : story ? (
+          <div className="w-full max-w-6xl mx-auto px-4">
+            <h1 className="text-4xl font-bold text-white mb-8 text-center">
+              {story.title}
+            </h1>
+
+            <div className="relative aspect-video w-full rounded-lg overflow-hidden mb-8 bg-gray-800">
+              {story.frames[currentFrame].imageUrl ? (
+                <Image
+                  src={story.frames[currentFrame].imageUrl}
+                  alt={story.frames[currentFrame].text}
+                  fill
+                  className="object-cover"
+                  priority={currentFrame < 2} // Prioritize loading first two images
+                  onLoad={() => {
+                    // Play audio when image loads and we're on one of the first two frames
+                    if (
+                      currentFrame < 2 &&
+                      story.frames[currentFrame].audio?.base64
+                    ) {
+                      const audio = base64ToAudio(
+                        story.frames[currentFrame].audio!.base64
+                      );
+                      audio.play();
+
+                      // Set up automatic transition to next frame
+                      if (currentFrame === 0) {
+                        const duration =
+                          story.frames[currentFrame].audio!.duration * 1000; // Convert to milliseconds
+                        setTimeout(() => {
+                          setCurrentFrame(1);
+                        }, duration);
+                      }
+                    }
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-white text-lg">Image not yet generated</p>
+                </div>
+              )}
+            </div>
+
+            <p className="text-white text-lg text-center mb-8">
+              {story.frames[currentFrame].text}
+            </p>
+
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setCurrentFrame(Math.max(0, currentFrame - 1))}
+                  disabled={currentFrame === 0}
+                  className={`px-6 py-3 rounded-full flex items-center gap-2 ${
+                    currentFrame === 0
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : "bg-white text-black hover:bg-opacity-90"
+                  }`}
+                >
+                  ← Previous
+                </button>
+                <div className="bg-white bg-opacity-10 px-4 py-2 rounded-full">
+                  <span className="text-white font-medium">
+                    Frame {currentFrame + 1} of {story.frames.length}
+                  </span>
+                </div>
+                <button
+                  onClick={() =>
+                    setCurrentFrame(
+                      Math.min(story.frames.length - 1, currentFrame + 1)
+                    )
+                  }
+                  disabled={currentFrame === story.frames.length - 1}
+                  className={`px-6 py-3 rounded-full flex items-center gap-2 ${
+                    currentFrame === story.frames.length - 1
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : "bg-white text-black hover:bg-opacity-90"
+                  }`}
+                >
+                  Next →
+                </button>
+              </div>
+              <p className="text-gray-400 text-sm">
+                Use arrow keys to navigate between frames
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </motion.div>
+
+      {/* Next Button */}
+      <motion.button
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed bottom-8 right-8 bg-white rounded-full px-8 py-3 font-medium text-black z-50"
+        onClick={async () => {
+          if (currentScreen === "genre") {
+            setTimeout(() => setCurrentScreen("theme"), 100);
+          } else if (currentScreen === "theme") {
+            setIsLoading(true);
+            try {
+              const generatedStory = await generateStoryImages(selectedGenre);
+              setStory(generatedStory);
+              setCurrentFrame(0);
+              setCurrentScreen("story");
+            } catch (error) {
+              console.error("Error generating story:", error);
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }}
+      >
+        {currentScreen === "genre"
+          ? "Next"
+          : currentScreen === "theme"
+          ? "Create Story"
+          : ""}
+      </motion.button>
+
+      {/* Radial Gradient */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity: currentScreen === "theme" ? [0.3, 0.9, 0, 0.3] : 0.3,
+          scale: currentScreen === "theme" ? [1, 3, 3, 1] : 1,
+          backgroundColor:
+            currentScreen === "theme"
+              ? ["transparent", "transparent", "black", "transparent"]
+              : "transparent",
+        }}
+        transition={{
+          duration: 2,
+          ease: [0.4, 0, 0.2, 1],
+          times: [0, 0.2, 0.4, 1],
+        }}
+        className="fixed inset-0 w-screen h-screen z-0 pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at center bottom, ${currentGradientColor} 0%, transparent 60%)`,
+          transformOrigin: "center bottom",
+        }}
+      />
     </div>
   );
 }
