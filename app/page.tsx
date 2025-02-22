@@ -21,6 +21,10 @@ export default function Home() {
     Array<{ name: string; emoji: string }>
   >([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<{
+    message: string;
+    progress: number;
+  }>({ message: "", progress: 0 });
   const [story, setStory] = useState<{
     title: string;
     frames: Array<{
@@ -321,7 +325,71 @@ export default function Home() {
         }`}
       >
         {isLoading ? (
-          <div className="text-white text-lg">Generating your story...</div>
+          <div className="flex flex-col items-center justify-center space-y-8 p-8 max-w-lg mx-auto text-center">
+            <div className="relative w-32 h-32">
+              <div className="absolute inset-0 rounded-full border-4 border-white border-opacity-20"></div>
+              <svg
+                className="absolute inset-0 w-full h-full transform -rotate-90"
+                viewBox="0 0 100 100"
+              >
+                <circle
+                  className="text-white"
+                  strokeWidth="4"
+                  stroke="currentColor"
+                  fill="transparent"
+                  strokeDasharray={`${loadingStatus.progress * 283} 283`}
+                  r="45"
+                  cx="50"
+                  cy="50"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-white text-xl font-medium">
+                  {Math.round(loadingStatus.progress * 100)}%
+                </span>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-white">
+              Creating Your{" "}
+              {selectedFormat === "motion-comic" ? "Motion Comic" : "Video"}{" "}
+              Story
+            </h2>
+            <p className="text-gray-300 text-lg animate-pulse">
+              {loadingStatus.message}
+            </p>
+            <div className="grid grid-cols-3 gap-4 mt-8">
+              <div
+                className={`p-4 rounded-lg ${
+                  loadingStatus.progress >= 0.2
+                    ? "bg-white bg-opacity-10"
+                    : "bg-white bg-opacity-5"
+                }`}
+              >
+                <p className="text-white font-medium">Story</p>
+                <p className="text-sm text-gray-400">Generating plot</p>
+              </div>
+              <div
+                className={`p-4 rounded-lg ${
+                  loadingStatus.progress >= 0.5
+                    ? "bg-white bg-opacity-10"
+                    : "bg-white bg-opacity-5"
+                }`}
+              >
+                <p className="text-white font-medium">Media</p>
+                <p className="text-sm text-gray-400">Creating visuals</p>
+              </div>
+              <div
+                className={`p-4 rounded-lg ${
+                  loadingStatus.progress >= 0.8
+                    ? "bg-white bg-opacity-10"
+                    : "bg-white bg-opacity-5"
+                }`}
+              >
+                <p className="text-white font-medium">Audio</p>
+                <p className="text-sm text-gray-400">Adding narration</p>
+              </div>
+            </div>
+          </div>
         ) : story ? (
           <div className="w-full max-w-6xl mx-auto px-4">
             <h1 className="text-4xl font-bold text-white mb-8 text-center">
@@ -330,41 +398,84 @@ export default function Home() {
 
             <div className="relative aspect-video w-full rounded-lg overflow-hidden mb-8 bg-gray-800">
               {story.frames[currentFrame].imageUrl ? (
-                <Image
-                  src={story.frames[currentFrame].imageUrl}
-                  alt={story.frames[currentFrame].text}
-                  fill
-                  className="object-cover"
-                  priority={currentFrame < 2} // Prioritize loading first two images
-                  onLoad={() => {
-                    // Play audio when image loads and we're on one of the first two frames
-                    if (
-                      currentFrame < 2 &&
-                      story.frames[currentFrame].audio?.base64
-                    ) {
-                      // Create and play the mixed audio
-                      const audio = base64ToAudio(
-                        story.frames[currentFrame].audio!.base64
-                      );
+                selectedFormat === "motion-comic" ? (
+                  <Image
+                    src={story.frames[currentFrame].imageUrl}
+                    alt={story.frames[currentFrame].text}
+                    fill
+                    className="object-cover"
+                    priority={currentFrame < 2}
+                    onLoad={() => {
+                      if (
+                        currentFrame < 2 &&
+                        story.frames[currentFrame].audio?.base64
+                      ) {
+                        const audio = base64ToAudio(
+                          story.frames[currentFrame].audio!.base64
+                        );
+                        audio.volume = 1.0;
+                        audio.play();
 
-                      // Set volume to full since mixing is already handled
-                      audio.volume = 1.0;
-                      audio.play();
-
-                      // Set up automatic transition to next frame
-                      if (currentFrame === 0) {
-                        const duration =
-                          story.frames[currentFrame].audio!.duration * 1000; // Convert to milliseconds
-                        setTimeout(() => {
-                          setCurrentFrame(1);
-                        }, duration);
+                        // Listen for audio completion
+                        audio.onended = () => {
+                          if (currentFrame < story.frames.length - 1) {
+                            setCurrentFrame(currentFrame + 1);
+                          }
+                        };
                       }
-                    }
-                  }}
-                />
+                    }}
+                  />
+                ) : (
+                  <video
+                    src={story.frames[currentFrame].imageUrl}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-cover"
+                    onPlay={() => {
+                      if (
+                        currentFrame < 2 &&
+                        story.frames[currentFrame].audio?.base64
+                      ) {
+                        const audio = base64ToAudio(
+                          story.frames[currentFrame].audio!.base64
+                        );
+                        audio.volume = 1.0;
+                        audio.play();
+
+                        // Create flags to track completion
+                        let audioComplete = false;
+                        let videoComplete = false;
+
+                        // Function to check if both are complete
+                        const checkCompletion = () => {
+                          if (audioComplete && videoComplete) {
+                            if (currentFrame < story.frames.length - 1) {
+                              setCurrentFrame(currentFrame + 1);
+                            }
+                          }
+                        };
+
+                        // Listen for audio completion
+                        audio.onended = () => {
+                          audioComplete = true;
+                          checkCompletion();
+                        };
+
+                        // Listen for video completion
+                        const video = document.querySelector("video");
+                        if (video) {
+                          video.onended = () => {
+                            videoComplete = true;
+                            checkCompletion();
+                          };
+                        }
+                      }
+                    }}
+                  />
+                )
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <p className="text-white text-lg">Image not yet generated</p>
+                  <p className="text-white text-lg">Media not yet generated</p>
                 </div>
               )}
             </div>
@@ -426,19 +537,39 @@ export default function Home() {
           } else if (currentScreen === "theme" && selectedTheme) {
             setCurrentScreen("format");
           } else if (currentScreen === "format" && selectedFormat) {
+            console.log("Starting story generation...");
             setIsLoading(true);
+            setLoadingStatus({
+              message: "Initializing story generation...",
+              progress: 0.1,
+            });
+            console.log("Loading status set:", {
+              isLoading: true,
+              progress: 0.1,
+            });
+
             try {
+              console.log("Calling generateStoryImages...");
               const generatedStory = await generateStoryImages(
                 selectedGenre,
-                selectedTheme
+                selectedTheme,
+                selectedFormat,
+                (status: string, progress: number) => {
+                  console.log("Progress update:", { status, progress });
+                  setLoadingStatus({ message: status, progress });
+                }
               );
+
+              console.log("Story generation complete:", generatedStory);
               setStory(generatedStory);
               setCurrentFrame(0);
               setCurrentScreen("story");
             } catch (error) {
               console.error("Error generating story:", error);
             } finally {
+              console.log("Resetting loading state...");
               setIsLoading(false);
+              setLoadingStatus({ message: "", progress: 0 });
             }
           }
         }}

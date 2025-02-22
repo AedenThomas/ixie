@@ -375,11 +375,15 @@ function writeString(view: DataView, offset: number, string: string) {
 
 export async function generateStoryImages(
   genre: string,
-  theme: string
+  theme: string,
+  format: "motion-comic" | "video",
+  onProgress?: (status: string, progress: number) => void
 ): Promise<Story> {
   try {
     // Generate the story using Mistral
+    onProgress?.("Generating story plot...", 0.1);
     const story = await generateStory(genre, theme);
+    onProgress?.("Creating your story world...", 0.2);
 
     // For debugging: only process the first two frames
     const firstTwoFrames = story.frames.slice(0, 2);
@@ -389,12 +393,23 @@ export async function generateStoryImages(
 
     // Generate images and audio for first two frames
     const updatedFrames = await Promise.all(
-      firstTwoFrames.map(async (frame) => {
+      firstTwoFrames.map(async (frame, index) => {
         try {
           console.log("Generating content for frame:", frame.text);
+          onProgress?.(
+            `Generating ${
+              format === "motion-comic" ? "images" : "video"
+            } for frame ${index + 1}...`,
+            0.3 + index * 0.2
+          );
 
           // Start with generating the voice narration to get its duration
+          console.log("Generating voice narration...");
           const voiceResult = await generateSpeechWithTimestamps(frame.text);
+          onProgress?.(
+            `Adding narration to frame ${index + 1}...`,
+            0.4 + index * 0.2
+          );
 
           const narrationDuration =
             voiceResult.normalized_alignment.character_end_times_seconds[
@@ -402,24 +417,37 @@ export async function generateStoryImages(
                 .length - 1
             ];
 
-          // Generate image and sound effect concurrently
-          const [imageResult, soundEffectResult] = await Promise.all([
-            fal.subscribe("fal-ai/flux/schnell", {
-              input: {
-                prompt: frame.text,
-                image_size: "landscape_16_9",
-                num_inference_steps: 4,
-                enable_safety_checker: true,
-              },
-            }),
+          // Generate image/video and sound effect concurrently
+          console.log(`Generating ${format} content...`);
+          const [mediaResult, soundEffectResult] = await Promise.all([
+            format === "motion-comic"
+              ? fal.subscribe("fal-ai/flux/schnell", {
+                  input: {
+                    prompt: frame.text,
+                    image_size: "landscape_16_9",
+                    num_inference_steps: 4,
+                    enable_safety_checker: true,
+                  },
+                })
+              : fal.subscribe("fal-ai/ltx-video", {
+                  input: {
+                    prompt: frame.text,
+                    negative_prompt:
+                      "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly",
+                    num_inference_steps: 30,
+                    guidance_scale: 3,
+                  },
+                }),
             frame.soundEffect
-              ? generateSoundEffect(
-                  frame.soundEffect,
-                  narrationDuration, // Match the duration of the narration
-                  0.3
-                )
+              ? generateSoundEffect(frame.soundEffect, narrationDuration, 0.3)
               : null,
           ]);
+
+          console.log("Media generation result:", mediaResult);
+          onProgress?.(
+            `Processing audio for frame ${index + 1}...`,
+            0.5 + index * 0.2
+          );
 
           let mixedAudio;
           if (soundEffectResult) {
@@ -429,9 +457,25 @@ export async function generateStoryImages(
             );
           }
 
+          // Extract the URL based on the format
+          let mediaUrl: string;
+          if (format === "motion-comic") {
+            mediaUrl = (mediaResult.data as any).images?.[0]?.url;
+            console.log("Motion comic image URL:", mediaUrl);
+          } else {
+            // For video format, extract the video URL
+            mediaUrl = (mediaResult.data as any).video?.url;
+            console.log("Video URL:", mediaUrl);
+          }
+
+          if (!mediaUrl) {
+            console.error("Failed to get media URL from result:", mediaResult);
+            throw new Error("Failed to get media URL from generation result");
+          }
+
           return {
             ...frame,
-            imageUrl: imageResult.data.images[0].url,
+            imageUrl: mediaUrl,
             audio: {
               base64: mixedAudio || voiceResult.audio_base64,
               duration: narrationDuration,
@@ -449,6 +493,8 @@ export async function generateStoryImages(
         }
       })
     );
+
+    onProgress?.("Finalizing your story...", 0.9);
 
     return {
       ...story,
