@@ -365,10 +365,13 @@ export default function Home() {
         onClick={async () => {
           if (currentScreen === "genre") {
             setTimeout(() => setCurrentScreen("theme"), 100);
-          } else if (currentScreen === "theme") {
+          } else if (currentScreen === "theme" && selectedTheme) {
             setIsLoading(true);
             try {
-              const generatedStory = await generateStoryImages(selectedGenre);
+              const generatedStory = await generateStoryImages(
+                selectedGenre,
+                selectedTheme
+              );
               setStory(generatedStory);
               setCurrentFrame(0);
               setCurrentScreen("story");
@@ -383,7 +386,9 @@ export default function Home() {
         {currentScreen === "genre"
           ? "Next"
           : currentScreen === "theme"
-          ? "Create Story"
+          ? selectedTheme
+            ? "Create Story"
+            : "Select a Theme"
           : ""}
       </motion.button>
 

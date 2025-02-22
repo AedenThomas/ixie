@@ -1,5 +1,6 @@
 import { fal } from "@fal-ai/client";
 import { generateSpeechWithTimestamps } from "./elevenlabs";
+import { generateStory } from "./mistral";
 
 // Configure fal-ai client with the correct credentials format
 if (typeof window !== "undefined") {
@@ -250,58 +251,64 @@ const SAMPLE_STORIES: Record<string, Story> = {
   },
 };
 
-export async function generateStoryImages(genre: string): Promise<Story> {
-  const story = SAMPLE_STORIES[genre];
-  if (!story) {
-    throw new Error(`No story found for genre: ${genre}`);
-  }
+export async function generateStoryImages(
+  genre: string,
+  theme: string
+): Promise<Story> {
+  try {
+    // Generate the story using Mistral
+    const story = await generateStory(genre, theme);
 
-  // For debugging: only process the first two frames
-  const firstTwoFrames = story.frames.slice(0, 2);
-  const remainingFrames = story.frames
-    .slice(2)
-    .map((frame) => ({ ...frame, imageUrl: "" }));
+    // For debugging: only process the first two frames
+    const firstTwoFrames = story.frames.slice(0, 2);
+    const remainingFrames = story.frames
+      .slice(2)
+      .map((frame) => ({ ...frame, imageUrl: "" }));
 
-  // Generate images and audio for each frame
-  const updatedFrames = await Promise.all(
-    firstTwoFrames.map(async (frame) => {
-      try {
-        console.log("Generating image for frame:", frame.text);
-        const [imageResult, audioResult] = await Promise.all([
-          fal.subscribe("fal-ai/flux/schnell", {
-            input: {
-              prompt: frame.text,
-              image_size: "landscape_16_9",
-              num_inference_steps: 4,
-              enable_safety_checker: true,
+    // Generate images and audio for each frame
+    const updatedFrames = await Promise.all(
+      firstTwoFrames.map(async (frame) => {
+        try {
+          console.log("Generating image for frame:", frame.text);
+          const [imageResult, audioResult] = await Promise.all([
+            fal.subscribe("fal-ai/flux/schnell", {
+              input: {
+                prompt: frame.text,
+                image_size: "landscape_16_9",
+                num_inference_steps: 4,
+                enable_safety_checker: true,
+              },
+            }),
+            generateSpeechWithTimestamps(frame.text),
+          ]);
+
+          const lastTimestamp =
+            audioResult.normalized_alignment.character_end_times_seconds[
+              audioResult.normalized_alignment.character_end_times_seconds
+                .length - 1
+            ];
+
+          return {
+            ...frame,
+            imageUrl: imageResult.data.images[0].url,
+            audio: {
+              base64: audioResult.audio_base64,
+              duration: lastTimestamp,
             },
-          }),
-          generateSpeechWithTimestamps(frame.text),
-        ]);
+          };
+        } catch (error) {
+          console.error("Error generating image or audio:", error);
+          return frame;
+        }
+      })
+    );
 
-        const lastTimestamp =
-          audioResult.normalized_alignment.character_end_times_seconds[
-            audioResult.normalized_alignment.character_end_times_seconds
-              .length - 1
-          ];
-
-        return {
-          ...frame,
-          imageUrl: imageResult.data.images[0].url,
-          audio: {
-            base64: audioResult.audio_base64,
-            duration: lastTimestamp,
-          },
-        };
-      } catch (error) {
-        console.error("Error generating image or audio:", error);
-        return frame;
-      }
-    })
-  );
-
-  return {
-    ...story,
-    frames: [...updatedFrames, ...remainingFrames],
-  };
+    return {
+      ...story,
+      frames: [...updatedFrames, ...remainingFrames],
+    };
+  } catch (error) {
+    console.error("Error in generateStoryImages:", error);
+    throw error;
+  }
 }

@@ -5,6 +5,16 @@ interface Theme {
   emoji: string;
 }
 
+interface StoryFrame {
+  text: string;
+  imageUrl: string;
+}
+
+interface Story {
+  title: string;
+  frames: StoryFrame[];
+}
+
 export async function generateThemes(genre: string): Promise<Theme[]> {
   const client = new Mistral({
     apiKey: process.env.NEXT_PUBLIC_MISTRAL_API_KEY || "",
@@ -67,5 +77,93 @@ IMPORTANT: Each emoji must be exactly one Unicode emoji character - no sequences
       { name: "Hidden Truth", emoji: "🗝️" },
       { name: "New Beginning", emoji: "✨" },
     ];
+  }
+}
+
+export async function generateStory(
+  genre: string,
+  theme: string
+): Promise<Story> {
+  const client = new Mistral({
+    apiKey: process.env.NEXT_PUBLIC_MISTRAL_API_KEY || "",
+  });
+
+  const prompt = `Generate a creative and engaging story in the "${genre}" genre, focusing on the theme "${theme}". The story should be told in exactly 10 frames, each representing a key moment in the narrative.
+
+The story should follow these guidelines:
+1. Each frame should be a vivid, descriptive sentence that can be easily visualized
+2. The frames should flow naturally and create a cohesive narrative arc
+3. The story should have a clear beginning, middle, and end
+4. The tone and style should match the genre
+5. The theme should be woven throughout the narrative
+6. Each frame's text should be detailed enough to generate an image from
+
+You must respond with a JSON object in this exact format:
+{
+  "title": "A creative and thematic title for the story",
+  "frames": [
+    {
+      "text": "Descriptive text for frame 1",
+      "imageUrl": ""
+    },
+    // ... exactly 10 frames total
+  ]
+}`;
+
+  try {
+    const chatResponse = await client.chat.complete({
+      model: "mistral-small",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a creative writing assistant that generates structured stories in JSON format. Always respond with a properly formatted JSON object containing a title and exactly 10 frames.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      responseFormat: { type: "json_object" },
+    });
+
+    if (!chatResponse?.choices?.[0]?.message?.content) {
+      throw new Error("Invalid response from Mistral API");
+    }
+
+    const content = String(chatResponse.choices[0].message.content);
+    const parsedContent = JSON.parse(content);
+
+    // Validate the story structure
+    if (
+      !parsedContent.title ||
+      !Array.isArray(parsedContent.frames) ||
+      parsedContent.frames.length !== 10
+    ) {
+      throw new Error("Invalid story structure from API");
+    }
+
+    // Ensure each frame has the required properties
+    const story: Story = {
+      title: String(parsedContent.title),
+      frames: parsedContent.frames.map((frame: any) => ({
+        text: String(frame.text || ""),
+        imageUrl: "",
+      })),
+    };
+
+    return story;
+  } catch (error) {
+    console.error("Error generating story:", error);
+    // Return a fallback story if the API fails
+    return {
+      title: `A ${theme} ${genre} Tale`,
+      frames: Array(10)
+        .fill(null)
+        .map((_, i) => ({
+          text: `Frame ${i + 1} of the story...`,
+          imageUrl: "",
+        })),
+    };
   }
 }

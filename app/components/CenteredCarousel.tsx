@@ -46,7 +46,7 @@ export function CenteredCarousel({
   return (
     <div
       ref={containerRef}
-      className={`flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory justify-center ${containerClassName}`}
+      className={`flex gap-4 overflow-visible scrollbar-hide snap-x snap-mandatory justify-center ${containerClassName}`}
     >
       {items.map((item, index) => (
         <motion.div
