@@ -71,15 +71,12 @@ export default function Home() {
 
   useEffect(() => {
     if (currentScreen === "theme") {
-      setIsLoading(true);
       generateThemes(selectedGenre)
         .then((themes) => {
           setGeneratedThemes(themes);
-          setIsLoading(false);
         })
         .catch((error) => {
           console.error("Error:", error);
-          setIsLoading(false);
         });
     }
   }, [currentScreen, selectedGenre]);
@@ -311,7 +308,7 @@ export default function Home() {
       </motion.div>
 
       {/* Loading Overlay */}
-      {isLoading && (
+      {isLoading && currentScreen === "format" && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -401,144 +398,7 @@ export default function Home() {
       >
         {story ? (
           <div className="w-full max-w-6xl mx-auto px-4">
-            <h1 className="text-4xl font-bold text-white mb-8 text-center">
-              {story.title}
-            </h1>
-
-            <div className="relative aspect-video w-full rounded-lg overflow-hidden mb-8 bg-gray-800">
-              {story.frames[currentFrame].imageUrl ? (
-                selectedFormat === "motion-comic" ? (
-                  <Image
-                    src={story.frames[currentFrame].imageUrl}
-                    alt={story.frames[currentFrame].text}
-                    fill
-                    className="object-cover"
-                    priority={currentFrame < 2}
-                    onLoad={() => {
-                      if (
-                        currentFrame < 2 &&
-                        story.frames[currentFrame].audio?.base64
-                      ) {
-                        const audio = base64ToAudio(
-                          story.frames[currentFrame].audio!.base64
-                        );
-                        audio.volume = 1.0;
-                        audio.play();
-
-                        // Listen for audio completion
-                        audio.onended = () => {
-                          if (currentFrame < story.frames.length - 1) {
-                            setCurrentFrame(currentFrame + 1);
-                          }
-                        };
-                      }
-                    }}
-                  />
-                ) : (
-                  <video
-                    src={story.frames[currentFrame].imageUrl}
-                    controls
-                    autoPlay
-                    className="w-full h-full object-cover"
-                    onLoadedMetadata={(e) => {
-                      const video = e.target as HTMLVideoElement;
-                      const audioDuration =
-                        story.frames[currentFrame].audio?.duration || 5;
-                      // Calculate playback rate to match audio duration (5 second video)
-                      const playbackRate = 5 / audioDuration;
-                      video.playbackRate = playbackRate;
-                    }}
-                    onPlay={() => {
-                      if (
-                        currentFrame < 2 &&
-                        story.frames[currentFrame].audio?.base64
-                      ) {
-                        const audio = base64ToAudio(
-                          story.frames[currentFrame].audio!.base64
-                        );
-                        audio.volume = 1.0;
-                        audio.play();
-
-                        // Create flags to track completion
-                        let audioComplete = false;
-                        let videoComplete = false;
-
-                        // Function to check if both are complete
-                        const checkCompletion = () => {
-                          if (audioComplete && videoComplete) {
-                            if (currentFrame < story.frames.length - 1) {
-                              setCurrentFrame(currentFrame + 1);
-                            }
-                          }
-                        };
-
-                        // Listen for audio completion
-                        audio.onended = () => {
-                          audioComplete = true;
-                          checkCompletion();
-                        };
-
-                        // Listen for video completion
-                        const video = document.querySelector("video");
-                        if (video) {
-                          video.onended = () => {
-                            videoComplete = true;
-                            checkCompletion();
-                          };
-                        }
-                      }
-                    }}
-                  />
-                )
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <p className="text-white text-lg">Media not yet generated</p>
-                </div>
-              )}
-            </div>
-
-            <p className="text-white text-lg text-center mb-8">
-              {story.frames[currentFrame].text}
-            </p>
-
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setCurrentFrame(Math.max(0, currentFrame - 1))}
-                  disabled={currentFrame === 0}
-                  className={`px-6 py-3 rounded-full flex items-center gap-2 ${
-                    currentFrame === 0
-                      ? "bg-gray-600 cursor-not-allowed"
-                      : "bg-white text-black hover:bg-opacity-90"
-                  }`}
-                >
-                  ← Previous
-                </button>
-                <div className="bg-white bg-opacity-10 px-4 py-2 rounded-full">
-                  <span className="text-white font-medium">
-                    Frame {currentFrame + 1} of {story.frames.length}
-                  </span>
-                </div>
-                <button
-                  onClick={() =>
-                    setCurrentFrame(
-                      Math.min(story.frames.length - 1, currentFrame + 1)
-                    )
-                  }
-                  disabled={currentFrame === story.frames.length - 1}
-                  className={`px-6 py-3 rounded-full flex items-center gap-2 ${
-                    currentFrame === story.frames.length - 1
-                      ? "bg-gray-600 cursor-not-allowed"
-                      : "bg-white text-black hover:bg-opacity-90"
-                  }`}
-                >
-                  Next →
-                </button>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Use arrow keys to navigate between frames
-              </p>
-            </div>
+            {/* Story content */}
           </div>
         ) : null}
       </motion.div>
@@ -554,37 +414,28 @@ export default function Home() {
           } else if (currentScreen === "theme" && selectedTheme) {
             setCurrentScreen("format");
           } else if (currentScreen === "format" && selectedFormat) {
-            console.log("Starting story generation...");
             setIsLoading(true);
             setLoadingStatus({
               message: "Initializing story generation...",
               progress: 0.1,
             });
-            console.log("Loading status set:", {
-              isLoading: true,
-              progress: 0.1,
-            });
 
             try {
-              console.log("Calling generateStoryImages...");
               const generatedStory = await generateStoryImages(
                 selectedGenre,
                 selectedTheme,
                 selectedFormat,
                 (status: string, progress: number) => {
-                  console.log("Progress update:", { status, progress });
                   setLoadingStatus({ message: status, progress });
                 }
               );
 
-              console.log("Story generation complete:", generatedStory);
               setStory(generatedStory);
               setCurrentFrame(0);
               setCurrentScreen("story");
             } catch (error) {
               console.error("Error generating story:", error);
             } finally {
-              console.log("Resetting loading state...");
               setIsLoading(false);
               setLoadingStatus({ message: "", progress: 0 });
             }
@@ -624,6 +475,7 @@ export default function Home() {
           transformOrigin: "center bottom",
         }}
       />
+
       {/* Second gradient for continuous subtle pulse */}
       {currentScreen !== "genre" && (
         <motion.div
