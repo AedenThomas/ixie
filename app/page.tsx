@@ -11,9 +11,12 @@ import { CenteredCarousel } from "./components/CenteredCarousel";
 export default function Home() {
   const [selectedGenre, setSelectedGenre] = useState<string>("Mystery");
   const [currentScreen, setCurrentScreen] = useState<
-    "genre" | "theme" | "story"
+    "genre" | "theme" | "format" | "story"
   >("genre");
   const [selectedTheme, setSelectedTheme] = useState<string>("");
+  const [selectedFormat, setSelectedFormat] = useState<
+    "motion-comic" | "video" | null
+  >(null);
   const [generatedThemes, setGeneratedThemes] = useState<
     Array<{ name: string; emoji: string }>
   >([]);
@@ -256,6 +259,53 @@ export default function Home() {
         </div>
       </motion.div>
 
+      {/* Format Selection View */}
+      <motion.div
+        initial={{ y: 1000, opacity: 0 }}
+        animate={{
+          y: currentScreen === "format" ? 0 : 1000,
+          opacity: currentScreen === "format" ? 1 : 0,
+        }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+        className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${
+          currentScreen === "format"
+            ? "pointer-events-auto"
+            : "pointer-events-none"
+        }`}
+      >
+        <div className="text-center mb-16">
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Choose Your Story Format
+          </h1>
+          <p className="text-gray-300 text-lg">
+            Select how you'd like your story to be presented
+          </p>
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={() => setSelectedFormat("motion-comic")}
+            className={`px-8 py-3 rounded-full font-medium transition-all ${
+              selectedFormat === "motion-comic"
+                ? "bg-white text-black"
+                : "bg-white bg-opacity-10 text-white hover:bg-opacity-20"
+            }`}
+          >
+            Motion Comic
+          </button>
+          <button
+            onClick={() => setSelectedFormat("video")}
+            className={`px-8 py-3 rounded-full font-medium transition-all ${
+              selectedFormat === "video"
+                ? "bg-white text-black"
+                : "bg-white bg-opacity-10 text-white hover:bg-opacity-20"
+            }`}
+          >
+            Video
+          </button>
+        </div>
+      </motion.div>
+
       {/* Story View */}
       <motion.div
         initial={{ y: 1000, opacity: 0 }}
@@ -374,6 +424,8 @@ export default function Home() {
           if (currentScreen === "genre") {
             setTimeout(() => setCurrentScreen("theme"), 100);
           } else if (currentScreen === "theme" && selectedTheme) {
+            setCurrentScreen("format");
+          } else if (currentScreen === "format" && selectedFormat) {
             setIsLoading(true);
             try {
               const generatedStory = await generateStoryImages(
@@ -397,6 +449,10 @@ export default function Home() {
           ? selectedTheme
             ? "Create Story"
             : "Select a Theme"
+          : currentScreen === "format"
+          ? selectedFormat
+            ? "Generate Story"
+            : "Select a Format"
           : ""}
       </motion.button>
 
