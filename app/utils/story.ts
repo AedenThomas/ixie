@@ -179,8 +179,8 @@ export async function generateStoryImages(
       .slice(2)
       .map((frame) => ({ ...frame, imageUrl: "" }));
 
-    // Generate images and audio for first two frames
-    const updatedFrames = await Promise.all(
+    // Generate content for first two frames
+    const processedFrames = await Promise.all(
       firstTwoFrames.map(async (frame, index) => {
         try {
           console.log("Generating content for frame:", frame.text);
@@ -191,7 +191,7 @@ export async function generateStoryImages(
             0.3 + index * 0.2
           );
 
-          // Start with generating the voice narration to get its duration
+          // Generate voice narration first to get duration
           console.log("Generating voice narration...");
           const voiceResult = await generateSpeechWithTimestamps(frame.text);
           onProgress?.(
@@ -205,7 +205,7 @@ export async function generateStoryImages(
                 .length - 1
             ];
 
-          // Generate image/video and sound effect concurrently
+          // Generate media content and sound effect concurrently
           console.log(`Generating ${format} content...`);
           const [mediaResult, soundEffectResult] = await Promise.all([
             format === "motion-comic"
@@ -237,6 +237,7 @@ export async function generateStoryImages(
             0.5 + index * 0.2
           );
 
+          // Mix audio if there's a sound effect
           let mixedAudio;
           if (soundEffectResult) {
             mixedAudio = await mixAudioTracks(
@@ -245,7 +246,7 @@ export async function generateStoryImages(
             );
           }
 
-          // Extract the URL based on the format
+          // Get media URL based on format
           let mediaUrl: string;
           if (format === "motion-comic") {
             const imageResult = mediaResult.data as FluxImageResult;
@@ -258,13 +259,20 @@ export async function generateStoryImages(
           }
 
           if (!mediaUrl) {
-            console.error("Failed to get media URL from result:", mediaResult);
             throw new Error("Failed to get media URL from generation result");
+          }
+
+          // For videos, download and create blob URL
+          let finalUrl = mediaUrl;
+          if (format === "video") {
+            const videoResponse = await fetch(mediaUrl);
+            const videoBlob = await videoResponse.blob();
+            finalUrl = URL.createObjectURL(videoBlob);
           }
 
           return {
             ...frame,
-            imageUrl: mediaUrl,
+            imageUrl: finalUrl,
             audio: {
               base64: mixedAudio || voiceResult.audio_base64,
               duration: narrationDuration,
@@ -287,7 +295,7 @@ export async function generateStoryImages(
 
     return {
       ...story,
-      frames: [...updatedFrames, ...remainingFrames],
+      frames: [...processedFrames, ...remainingFrames],
     };
   } catch (error) {
     console.error("Error in generateStoryImages:", error);

@@ -17,9 +17,11 @@ import {
 
 export default function Home() {
   const { isSignedIn } = useAuth();
+  const [isDebugMode, setIsDebugMode] = useState(false);
+  const [debugVideo, setDebugVideo] = useState<string | null>(null);
   const [selectedGenre, setSelectedGenre] = useState<string>("Mystery");
   const [currentScreen, setCurrentScreen] = useState<
-    "genre" | "theme" | "format" | "story"
+    "genre" | "theme" | "format" | "story" | "debug"
   >("genre");
   const [selectedTheme, setSelectedTheme] = useState<string>("");
   const [selectedFormat, setSelectedFormat] = useState<
@@ -112,10 +114,122 @@ export default function Home() {
     (genre) => genre.name === selectedGenre
   )?.gradientColor;
 
+  const handleDebugMerge = async () => {
+    if (!story || !story.frames || story.frames.length < 2) {
+      console.log("Not enough frames to merge");
+      return;
+    }
+
+    console.log("Starting debug merge...");
+    setIsLoading(true);
+    setLoadingStatus({
+      message: "Processing videos...",
+      progress: 0.3,
+    });
+
+    try {
+      // Get the first two frames
+      const frames = story.frames.slice(0, 2);
+
+      // Process each video with its audio
+      const processedVideos = await Promise.all(
+        frames.map(async (frame) => {
+          // Create a video element to adjust playback rate
+          const video = document.createElement("video");
+          video.src = frame.imageUrl;
+          await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+              const audioDuration = frame.audio?.duration || 5;
+              // Calculate playback rate to match audio duration (5 second video)
+              const playbackRate = 5 / audioDuration;
+              video.playbackRate = playbackRate;
+              resolve(null);
+            };
+          });
+
+          // Create an audio element
+          const audio = frame.audio ? base64ToAudio(frame.audio.base64) : null;
+
+          return {
+            videoUrl: frame.imageUrl,
+            audioBase64: frame.audio?.base64,
+            duration: frame.audio?.duration || 5,
+            playbackRate: video.playbackRate,
+          };
+        })
+      );
+
+      setLoadingStatus({
+        message: "Merging videos...",
+        progress: 0.6,
+      });
+
+      // Clean up previous debug video if it exists
+      if (debugVideo) {
+        URL.revokeObjectURL(debugVideo);
+      }
+
+      // Call the API to merge videos
+      const response = await fetch("/api/merge-videos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          videos: processedVideos.map((v) => ({
+            url: v.videoUrl,
+            audioBase64: v.audioBase64,
+            duration: v.duration,
+            playbackRate: v.playbackRate,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to merge videos");
+      }
+
+      // Create a blob URL from the response
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setDebugVideo(url);
+      setCurrentScreen("debug");
+    } catch (error) {
+      console.error("Error merging videos:", error);
+      setLoadingStatus({
+        message:
+          "Error: " +
+          (error instanceof Error ? error.message : "Failed to merge videos"),
+        progress: 0,
+      });
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        setLoadingStatus({ message: "", progress: 0 });
+      }, 3000);
+    }
+  };
+
+  // Clean up blob URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (debugVideo) {
+        URL.revokeObjectURL(debugVideo);
+      }
+    };
+  }, [debugVideo]);
+
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 relative overflow-hidden">
       {/* Auth buttons in top right */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-4 right-4 z-50 flex gap-4">
+        <button
+          onClick={handleDebugMerge}
+          className="bg-red-500 text-white rounded-full px-6 py-2 font-medium hover:bg-opacity-90"
+        >
+          Debug
+        </button>
         <SignedOut>
           <SignInButton mode="modal">
             <button className="bg-white text-black rounded-full px-6 py-2 font-medium hover:bg-opacity-90">
@@ -656,6 +770,59 @@ export default function Home() {
           }}
         />
       )}
+
+      {/* Debug View */}
+      <motion.div
+        initial={{ y: 1000, opacity: 0 }}
+        animate={{
+          y: currentScreen === "debug" ? 0 : 1000,
+          opacity: currentScreen === "debug" ? 1 : 0,
+        }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+        className={`absolute inset-0 flex flex-col items-center justify-center z-10 ${
+          currentScreen === "debug"
+            ? "pointer-events-auto"
+            : "pointer-events-none"
+        }`}
+      >
+        {debugVideo && (
+          <div className="w-full max-w-6xl mx-auto px-4">
+            <h1 className="text-4xl font-bold text-white mb-8 text-center">
+              Debug View - Merged Video
+            </h1>
+            <div className="relative aspect-video w-full rounded-lg overflow-hidden mb-8 bg-gray-800">
+              <video
+                src={debugVideo}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full"
+                style={{ backgroundColor: "black" }}
+              />
+            </div>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => setCurrentScreen("story")}
+                className="bg-white text-black rounded-full px-8 py-3 font-medium"
+              >
+                Back to Story
+              </button>
+              <button
+                onClick={() => {
+                  const video = document.querySelector("video");
+                  if (video) {
+                    video.currentTime = 0;
+                    video.play();
+                  }
+                }}
+                className="bg-blue-500 text-white rounded-full px-8 py-3 font-medium"
+              >
+                Replay
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }
