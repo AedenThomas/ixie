@@ -48,32 +48,32 @@ export default function Home() {
       name: "Fantasy",
       color: "bg-[#399A1D]",
       gradientColor: "#399A1D",
-      icon: "/cloud.svg",
+      emoji: "🧙‍♂️",
     },
     {
       name: "Horror",
       color: "bg-[#F54B4B]",
       gradientColor: "#F54B4B",
-      icon: "/wolf.svg",
+      emoji: "👻",
     },
     {
       name: "Mystery",
       color: "bg-[#FD950D]",
       gradientColor: "#FD950D",
-      icon: "/shell.svg",
+      emoji: "🔍",
     },
     {
       name: "Adventure",
       color: "bg-[#2660DA]",
       gradientColor: "#2660DA",
-      icon: "/feather.svg",
+      emoji: "🗺️",
     },
     {
       name: "Romance",
       color: "bg-[#FFF]",
       gradientColor: "#FFFFFF",
       textColor: "text-black",
-      icon: "/flower.svg",
+      emoji: "❤️",
     },
   ];
 
@@ -166,13 +166,7 @@ export default function Home() {
                   `}
                   layout
                 >
-                  <Image
-                    src={genre.icon}
-                    alt={`${genre.name} icon`}
-                    width={24}
-                    height={24}
-                    className="w-full h-full object-contain"
-                  />
+                  <span className="text-2xl">{genre.emoji}</span>
                 </motion.div>
                 <motion.h2
                   initial={{ opacity: 0 }}
