@@ -13,8 +13,11 @@ export default {
         foreground: "var(--foreground)",
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)"],
-        mono: ["var(--font-geist-mono)"],
+        zain: ["var(--font-zain)"],
+        monomakh: ["var(--font-monomakh)"],
+      },
+      fontSize: {
+        "zain-base": "1.6rem", // Set to exactly 1.6rem
       },
     },
   },

@@ -139,7 +139,7 @@ export default function Home() {
       >
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-white mb-4 font-monomakh">
             Welcome to Ixie
           </h1>
           <p className="text-gray-300 text-lg">
@@ -205,7 +205,7 @@ export default function Home() {
         }`}
       >
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-white mb-4 font-monomakh">
             Let's Narrow It Down
           </h1>
           <p className="text-gray-300 text-lg">
@@ -297,7 +297,7 @@ export default function Home() {
         }`}
       >
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-white mb-4 font-monomakh">
             Choose Your Story Format
           </h1>
           <p className="text-gray-300 text-lg">
@@ -360,7 +360,7 @@ export default function Home() {
                 </span>
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl font-bold text-white font-monomakh">
               Creating Your{" "}
               {selectedFormat === "motion-comic" ? "Motion Comic" : "Video"}{" "}
               Story
