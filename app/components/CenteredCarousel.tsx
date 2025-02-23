@@ -51,7 +51,9 @@ export function CenteredCarousel({
       {items.map((item, index) => (
         <motion.div
           key={item.id}
-          ref={(el) => (itemsRef.current[index] = el)}
+          ref={(el) => {
+            itemsRef.current[index] = el;
+          }}
           className={`carousel-item flex-shrink-0 snap-center ${
             item.className || ""
           }`}
