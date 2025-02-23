@@ -209,15 +209,15 @@ export async function generateStoryImages(
           console.log(`Generating ${format} content...`);
           const [mediaResult, soundEffectResult] = await Promise.all([
             format === "motion-comic"
-              ? fal.subscribe("fal-ai/flux/schnell", {
+              ? (fal.subscribe("fal-ai/flux/schnell", {
                   input: {
                     prompt: frame.text,
                     image_size: "landscape_16_9",
                     num_inference_steps: 4,
                     enable_safety_checker: true,
                   },
-                })
-              : fal.subscribe("fal-ai/ltx-video", {
+                }) as Promise<MediaResult>)
+              : (fal.subscribe("fal-ai/ltx-video", {
                   input: {
                     prompt: frame.text,
                     negative_prompt:
@@ -225,7 +225,7 @@ export async function generateStoryImages(
                     num_inference_steps: 30,
                     guidance_scale: 3,
                   },
-                }),
+                }) as Promise<MediaResult>),
             frame.soundEffect
               ? generateSoundEffect(frame.soundEffect, narrationDuration, 0.3)
               : null,

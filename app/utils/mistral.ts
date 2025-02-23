@@ -5,6 +5,17 @@ interface Theme {
   emoji: string;
 }
 
+interface RawTheme {
+  name?: string;
+  emoji?: string;
+}
+
+interface RawFrame {
+  text?: string;
+  imageUrl?: string;
+  soundEffect?: string;
+}
+
 interface StoryFrame {
   text: string;
   imageUrl: string;
@@ -14,11 +25,6 @@ interface StoryFrame {
 interface Story {
   title: string;
   frames: StoryFrame[];
-}
-
-interface RawTheme {
-  name?: string;
-  emoji?: string;
 }
 
 export async function generateThemes(genre: string): Promise<Theme[]> {
@@ -154,7 +160,7 @@ You must respond with a JSON object in this exact format:
     // Ensure each frame has the required properties
     const story: Story = {
       title: String(parsedContent.title),
-      frames: parsedContent.frames.map((frame: any) => ({
+      frames: parsedContent.frames.map((frame: RawFrame) => ({
         text: String(frame.text || ""),
         imageUrl: "",
         soundEffect: String(frame.soundEffect || ""),
