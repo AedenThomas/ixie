@@ -17,7 +17,6 @@ import {
 
 export default function Home() {
   const { isSignedIn } = useAuth();
-  const [isDebugMode, setIsDebugMode] = useState(false);
   const [debugVideo, setDebugVideo] = useState<string | null>(null);
   const [selectedGenre, setSelectedGenre] = useState<string>("Mystery");
   const [currentScreen, setCurrentScreen] = useState<
@@ -146,10 +145,6 @@ export default function Home() {
               resolve(null);
             };
           });
-
-          // Create an audio element
-          const audio = frame.audio ? base64ToAudio(frame.audio.base64) : null;
-
           return {
             videoUrl: frame.imageUrl,
             audioBase64: frame.audio?.base64,
