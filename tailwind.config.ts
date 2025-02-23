@@ -18,6 +18,8 @@ export default {
       },
       fontSize: {
         "zain-base": "1.6rem", // Set to exactly 1.6rem
+        "title-lg": "3.8rem", // 20% larger than 4rem
+        "subtitle-lg": "1.92rem", // 20% larger than 1.6rem
       },
     },
   },

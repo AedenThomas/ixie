@@ -139,10 +139,10 @@ export default function Home() {
       >
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-white mb-4 font-monomakh">
+          <h1 className="text-title-lg font-bold text-white mb-4 font-monomakh">
             Welcome to Ixie
           </h1>
-          <p className="text-gray-300 text-lg">
+          <p className="text-subtitle-lg text-gray-300">
             Select a genre to begin your story journey
           </p>
         </div>
@@ -205,10 +205,10 @@ export default function Home() {
         }`}
       >
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-white mb-4 font-monomakh">
+          <h1 className="text-title-lg font-bold text-white mb-4 font-monomakh">
             Let's Narrow It Down
           </h1>
-          <p className="text-gray-300 text-lg">
+          <p className="text-subtitle-lg text-gray-300">
             Pick a theme or let us surprise you!
           </p>
         </div>
@@ -297,10 +297,10 @@ export default function Home() {
         }`}
       >
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-white mb-4 font-monomakh">
+          <h1 className="text-title-lg font-bold text-white mb-4 font-monomakh">
             Choose Your Story Format
           </h1>
-          <p className="text-gray-300 text-lg">
+          <p className="text-subtitle-lg text-gray-300">
             Select how you'd like your story to be presented
           </p>
         </div>
@@ -360,7 +360,7 @@ export default function Home() {
                 </span>
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-white font-monomakh">
+            <h2 className="text-3xl font-bold text-white font-monomakh">
               Creating Your{" "}
               {selectedFormat === "motion-comic" ? "Motion Comic" : "Video"}{" "}
               Story
