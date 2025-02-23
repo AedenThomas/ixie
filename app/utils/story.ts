@@ -173,22 +173,22 @@ export async function generateStoryImages(
     const story = await generateStory(genre, theme);
     onProgress?.("Creating your story world...", 0.2);
 
-    // For debugging: only process the first two frames
-    const firstTwoFrames = story.frames.slice(0, 2);
+    // For debugging: only process the first four frames
+    const firstFourFrames = story.frames.slice(0, 4);
     const remainingFrames = story.frames
-      .slice(2)
+      .slice(4)
       .map((frame) => ({ ...frame, imageUrl: "" }));
 
-    // Generate content for first two frames
+    // Generate content for first four frames
     const processedFrames = await Promise.all(
-      firstTwoFrames.map(async (frame, index) => {
+      firstFourFrames.map(async (frame, index) => {
         try {
           console.log("Generating content for frame:", frame.text);
           onProgress?.(
             `Generating ${
               format === "motion-comic" ? "images" : "video"
             } for frame ${index + 1}...`,
-            0.3 + index * 0.2
+            0.2 + index * 0.15
           );
 
           // Generate voice narration first to get duration
@@ -196,7 +196,7 @@ export async function generateStoryImages(
           const voiceResult = await generateSpeechWithTimestamps(frame.text);
           onProgress?.(
             `Adding narration to frame ${index + 1}...`,
-            0.4 + index * 0.2
+            0.25 + index * 0.15
           );
 
           const narrationDuration =
@@ -209,21 +209,14 @@ export async function generateStoryImages(
           console.log(`Generating ${format} content...`);
           const [mediaResult, soundEffectResult] = await Promise.all([
             format === "motion-comic"
-              ? (fal.subscribe("fal-ai/flux/schnell", {
+              ? (fal.subscribe("fal-ai/flux-pro/v1.1-ultra", {
                   input: {
                     prompt: frame.text,
-                    image_size: "landscape_16_9",
-                    num_inference_steps: 4,
-                    enable_safety_checker: true,
                   },
                 }) as Promise<MediaResult>)
-              : (fal.subscribe("fal-ai/ltx-video", {
+              : (fal.subscribe("fal-ai/veo2", {
                   input: {
                     prompt: frame.text,
-                    negative_prompt:
-                      "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly",
-                    num_inference_steps: 30,
-                    guidance_scale: 3,
                   },
                 }) as Promise<MediaResult>),
             frame.soundEffect
@@ -234,7 +227,7 @@ export async function generateStoryImages(
           console.log("Media generation result:", mediaResult);
           onProgress?.(
             `Processing audio for frame ${index + 1}...`,
-            0.5 + index * 0.2
+            0.3 + index * 0.15
           );
 
           // Mix audio if there's a sound effect

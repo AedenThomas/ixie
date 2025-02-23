@@ -535,12 +535,9 @@ export default function Home() {
                     alt={story.frames[currentFrame].text}
                     fill
                     className="object-cover"
-                    priority={currentFrame < 2}
+                    priority={currentFrame < 4}
                     onLoad={() => {
-                      if (
-                        currentFrame < 2 &&
-                        story.frames[currentFrame].audio?.base64
-                      ) {
+                      if (story.frames[currentFrame].audio?.base64) {
                         const audio = base64ToAudio(
                           story.frames[currentFrame].audio!.base64
                         );
@@ -571,10 +568,7 @@ export default function Home() {
                       video.playbackRate = playbackRate;
                     }}
                     onPlay={() => {
-                      if (
-                        currentFrame < 2 &&
-                        story.frames[currentFrame].audio?.base64
-                      ) {
+                      if (story.frames[currentFrame].audio?.base64) {
                         const audio = base64ToAudio(
                           story.frames[currentFrame].audio!.base64
                         );
