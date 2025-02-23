@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -13,8 +13,8 @@ export default {
         foreground: "var(--foreground)",
       },
       fontFamily: {
-        zain: ["var(--font-zain)"],
-        monomakh: ["var(--font-monomakh)"],
+        roboto: ["var(--font-roboto)"],
+        playfair: ["var(--font-playfair)"],
       },
       fontSize: {
         "zain-base": "1.6rem", // Set to exactly 1.6rem
@@ -24,4 +24,6 @@ export default {
     },
   },
   plugins: [],
-} satisfies Config;
+};
+
+export default config;

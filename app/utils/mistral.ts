@@ -16,6 +16,11 @@ interface Story {
   frames: StoryFrame[];
 }
 
+interface RawTheme {
+  name?: string;
+  emoji?: string;
+}
+
 export async function generateThemes(genre: string): Promise<Theme[]> {
   const client = new Mistral({
     apiKey: process.env.NEXT_PUBLIC_MISTRAL_API_KEY || "",
@@ -52,13 +57,13 @@ IMPORTANT: Each emoji must be exactly one Unicode emoji character - no sequences
 
     // Check if the parsed content is an array
     const themes: Theme[] = Array.isArray(parsedContent)
-      ? parsedContent.map((theme: any) => {
+      ? parsedContent.map((theme: RawTheme) => {
           // Ensure we only take the first emoji character if multiple are provided
           const emoji =
             String(theme.emoji || "✨").match(/\p{Emoji}/u)?.[0] || "✨";
           return {
             name: String(theme.name || ""),
-            emoji: emoji,
+            emoji,
           };
         })
       : [];
