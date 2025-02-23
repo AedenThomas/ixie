@@ -16,7 +16,7 @@ interface VideoRequest {
   }>;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<Response> {
   try {
     const { videos } = (await req.json()) as VideoRequest;
 
@@ -54,63 +54,61 @@ export async function POST(req: Request) {
       }
     }
 
-    // Merge videos
-    return new Promise((resolve, reject) => {
-      videoConcat({
-        silent: true,
-        overwrite: true,
-      })
-        .clips(
-          inputFiles.map((file, i) => ({
-            fileName: file,
-            // Add audio options if available
-            ...(audioFiles[i] && {
-              audioFileName: audioFiles[i],
-              audioStartTime: 0,
-              audioEndTime: videos[i].duration,
-            }),
-          }))
-        )
-        .output(outputPath)
-        .concat()
-        .then(async () => {
-          // Read the output file
-          const outputBuffer = await readFile(outputPath);
-
-          // Clean up temporary files
-          await Promise.all([
-            ...inputFiles.map((file) => unlink(file)),
-            ...audioFiles.map((file) => unlink(file)),
-            unlink(outputPath),
-          ]);
-
-          // Return the merged video as a blob
-          return resolve(
-            new NextResponse(outputBuffer, {
-              headers: {
-                "Content-Type": "video/mp4",
-                "Content-Disposition": 'attachment; filename="merged.mp4"',
-              },
-            })
-          );
+    try {
+      // Merge videos
+      await new Promise<void>((resolve, reject) => {
+        videoConcat({
+          silent: true,
+          overwrite: true,
         })
-        .catch(async (error: unknown) => {
-          // Clean up temporary files on error
-          await Promise.all([
-            ...inputFiles.map((file) => unlink(file).catch(() => {})),
-            ...audioFiles.map((file) => unlink(file).catch(() => {})),
-            unlink(outputPath).catch(() => {}),
-          ]);
+          .clips(
+            inputFiles.map((file, i) => ({
+              fileName: file,
+              // Add audio options if available
+              ...(audioFiles[i] && {
+                audioFileName: audioFiles[i],
+                audioStartTime: 0,
+                audioEndTime: videos[i].duration,
+              }),
+            }))
+          )
+          .output(outputPath)
+          .concat()
+          .then(() => resolve())
+          .catch(reject);
+      });
 
-          console.error("Error merging videos:", error);
-          return reject(
-            NextResponse.json(
-              { error: "Failed to merge videos" },
-              { status: 500 }
-            )
-          );
-        });
-    });
+      // Read the output file
+      const outputBuffer = await readFile(outputPath);
+
+      // Clean up temporary files
+      await Promise.all([
+        ...inputFiles.map((file) => unlink(file)),
+        ...audioFiles.map((file) => unlink(file)),
+        unlink(outputPath),
+      ]);
+
+      // Return the merged video as a response
+      return new NextResponse(outputBuffer, {
+        headers: {
+          "Content-Type": "video/mp4",
+          "Content-Disposition": 'attachment; filename="merged.mp4"',
+        },
+      });
+    } catch (error) {
+      // Clean up temporary files on error
+      await Promise.all([
+        ...inputFiles.map((file) => unlink(file).catch(() => {})),
+        ...audioFiles.map((file) => unlink(file).catch(() => {})),
+        unlink(outputPath).catch(() => {}),
+      ]);
+
+      console.error("Error merging videos:", error);
+      return NextResponse.json(
+        { error: "Failed to merge videos" },
+        { status: 500 }
+      );
+    }
   } catch (error: unknown) {
     console.error("Error in merge-videos route:", error);
     return NextResponse.json(

@@ -219,12 +219,12 @@ export default function Home() {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 relative overflow-hidden">
       {/* Auth buttons in top right */}
       <div className="fixed top-4 right-4 z-50 flex gap-4">
-        <button
+        {/* <button
           onClick={handleDebugMerge}
           className="bg-red-500 text-white rounded-full px-6 py-2 font-medium hover:bg-opacity-90"
         >
           Debug
-        </button>
+        </button> */}
         <SignedOut>
           <SignInButton mode="modal">
             <button className="bg-white text-black rounded-full px-6 py-2 font-medium hover:bg-opacity-90">
